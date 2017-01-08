@@ -15,6 +15,12 @@
   visibility: @visibility;
 }
 
+.block-cursor-ime-on(@visibility) {
+  .cursor-base();
+  background-color: lawngreen;
+  visibility: @visibility;
+}
+
 .underline-cursor(@visibility) {
   .cursor-base();
   border-bottom: .3em solid @syntax-cursor-color;
@@ -33,6 +39,15 @@ atom-text-editor.vim-mode-plus.visual-mode,
   &.is-focused {
     .cursor {
       .block-cursor(visible);
+    }
+  }
+}
+
+atom-text-editor.vim-mode-plus.normal-mode.remember-ime-on
+{
+  &.is-focused {
+    .cursor {
+      .block-cursor-ime-on(visible);
     }
   }
 }

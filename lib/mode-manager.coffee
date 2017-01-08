@@ -4,11 +4,13 @@ Base = require './base'
 swrap = require './selection-wrapper'
 {moveCursorLeft} = require './utils'
 settings = require './settings'
+proc = require('child_process')
 
 class ModeManager
   mode: 'insert' # Native atom is not modal editor and its default is 'insert'
   submode: null
   replacedCharsBySelection: null
+  rememberedIMEState: false
 
   constructor: (@vimState) ->
     {@editor, @editorElement} = @vimState
@@ -87,6 +89,7 @@ class ModeManager
     @vimState.reset()
     # [FIXME] Component is not necessary avaiable see #98.
     @editorElement.component?.setInputEnabled(false)
+    @rememberAndDisableIME()
     new Disposable
 
   # Operator Pending
@@ -99,6 +102,7 @@ class ModeManager
   activateInsertMode: (submode=null) ->
     @editorElement.component.setInputEnabled(true)
     replaceModeDeactivator = @activateReplaceMode() if submode is 'replace'
+    @recallIME()
 
     new Disposable =>
       replaceModeDeactivator?.dispose()
@@ -189,5 +193,48 @@ class ModeManager
 
   isNarrowed: ->
     @editorElement.classList.contains('is-narrowed')
+
+
+  rememberAndDisableIME: ->
+    return if not settings.get('getIMEStateCmd')
+    state = @getIMEState()
+    console.log('remember state: ' + state)
+    @rememberedIMEState = state
+    if state
+      @setIMEState(false)
+      @editorElement.classList.add('remember-ime-on')
+    else
+      @editorElement.classList.remove('remember-ime-on')
+
+  recallIME: ->
+    return if not settings.get('getIMEStateCmd')
+    state = @getIMEState()
+    console.log('recall state: ' + state)
+    if (not state) and @rememberedIMEState
+      @setIMEState(true)
+
+  getIMEState: ->
+    cmd = settings.get('getIMEStateCmd')
+    resultDisable = settings.get('IMEStateDisable')
+    resultEnable  = settings.get('IMEStateEnable')
+    result = proc.execSync(cmd).toString().trim()
+    console.log('exec: ' + cmd + ' => ' + result)
+    switch result
+      when resultDisable
+        return false
+      when resultEnable
+        return true
+      else
+        console.log("Unknown IME state: " + result)
+        return false
+
+  setIMEState: (enable) ->
+    if enable
+      cmd = settings.get('setIMEStateEnableCmd')
+    else
+      cmd = settings.get('setIMEStateDisableCmd')
+    result = proc.execSync(cmd).toString().trim()
+    console.log('exec: ' + cmd + ' => ' + result)
+
 
 module.exports = ModeManager
